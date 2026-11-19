@@ -27,7 +27,15 @@ docker run -d --restart always -e BOT_TOKEN=... -e API_ID=... -e API_HASH=... -e
 ## How it works
 Send a video, pick a button, give input if needed, and get the edited video back. Each edit stacks on top of the previous one. Use `/done` to delete your files.
 
-## Admin commands (ADMIN_ID only)
+## Staff commands (admin and moderators)
 - `/stats` : user and edit counts
 - `/broadcast message` : message everyone (or reply to a message with /broadcast)
 - `/ban ID` and `/unban ID`
+
+## Admin-only commands
+- `/addmod ID` : make someone a moderator
+- `/removemod ID` : remove a moderator
+- `/mods` : list all moderators
+- `/commands` : shows the command list (staff only)
+
+Moderators can use /stats, /broadcast, /ban and /unban. Moderators cannot ban the admin or other moderators, and cannot add or remove moderators.
