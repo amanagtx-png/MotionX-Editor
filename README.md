@@ -1,6 +1,9 @@
-# Video Editor Telegram Bot (Version 1.0 | Genesis Release)
+# Video Editor Telegram Bot [V1.0]
 
 Features: trim, speed, text, music, mute, extract audio, compress. Works with videos up to 2GB.
+
+## Updates channel
+Join our Telegram channel for updates and news: https://t.me/AniTimesNetwork
 
 ## Environment variables
 | Name | Where to get it |
