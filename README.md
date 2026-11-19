@@ -1,37 +1,33 @@
-# MotionX-Editor
-🎬 Your Personal Video Editing Bot!⚡ Create Pro-Level Edits Easily.🚀 Powered By @AniTimesNetwork
+# Video Editor Telegram Bot (Step 1)
 
+Features: trim, speed, text, music, mute, extract audio, compress. Works with videos up to 2GB.
 
-# वीडियो एडिटर टेलीग्राम बॉट (चरण 1)
-
-फ़ीचर: ट्रिम, स्पीड, टेक्स्ट, म्यूज़िक, म्यूट, ऑडियो निकालना, कम्प्रेस। 2GB तक की वीडियो चलेगी।
-
-## ज़रूरी वैल्यू (Environment Variables)
-| नाम | कहाँ से मिलेगा |
+## Environment variables
+| Name | Where to get it |
 |---|---|
 | `BOT_TOKEN` | @BotFather |
-| `API_ID` | https://my.telegram.org → API development tools |
-| `API_HASH` | वहीं से |
-| `MONGO_URI` | MongoDB Atlas → Connect → Drivers (फ्री क्लस्टर चलेगा) |
-| `ADMIN_ID` | आपकी टेलीग्राम ID (डिफ़ॉल्ट: 6658706300) |
+| `API_ID` | https://my.telegram.org -> API development tools |
+| `API_HASH` | same page |
+| `MONGO_URI` | MongoDB Atlas -> Connect -> Drivers (free cluster is enough) |
+| `ADMIN_ID` | your Telegram user ID (default: 6658706300) |
 
-## Railway पर डिप्लॉय
-1. यह फ़ोल्डर अपने GitHub रिपॉज़िटरी में अपलोड करें।
-2. Railway → New Project → Deploy from GitHub repo।
-3. Variables टैब में ऊपर की तीनों वैल्यू डालें।
-4. Railway अपने आप Dockerfile से बना कर चला देगा।
+## Deploy on Railway
+1. Upload this folder to your GitHub repository.
+2. Railway -> New Project -> Deploy from GitHub repo.
+3. Add the variables above in the Variables tab.
+4. Railway builds from the Dockerfile and starts the bot automatically.
 
-## VPS पर
+## Deploy on a VPS
 ```
-git clone <आपका-रिपो-लिंक> && cd <फ़ोल्डर>
+git clone <your-repo-link> && cd <folder>
 docker build -t editorbot .
-docker run -d --restart always -e BOT_TOKEN=... -e API_ID=... -e API_HASH=... editorbot
+docker run -d --restart always -e BOT_TOKEN=... -e API_ID=... -e API_HASH=... -e MONGO_URI=... editorbot
 ```
 
-## कैसे चलता है
-वीडियो भेजें → बटन चुनें → ज़रूरत हो तो इनपुट दें → एडिटेड वीडियो मिलेगा। हर एडिट पिछले एडिट के ऊपर जुड़ता जाता है। `/done` से फ़ाइलें हट जाती हैं।
+## How it works
+Send a video, pick a button, give input if needed, and get the edited video back. Each edit stacks on top of the previous one. Use `/done` to delete your files.
 
-## एडमिन कमांड (सिर्फ़ ADMIN_ID के लिए)
-- `/stats` : यूज़र और एडिट की गिनती
-- `/broadcast मैसेज` : सबको मैसेज (या किसी मैसेज पर रिप्लाई करके)
-- `/ban ID` और `/unban ID`
+## Admin commands (ADMIN_ID only)
+- `/stats` : user and edit counts
+- `/broadcast message` : message everyone (or reply to a message with /broadcast)
+- `/ban ID` and `/unban ID`
