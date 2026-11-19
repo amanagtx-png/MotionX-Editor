@@ -186,7 +186,7 @@ async def on_button(client, q):
         await q.message.reply(PROMPTS[action])
 
 
-@app.on_message(filters.private & filters.text & ~filters.command(["start", "help", "done", "stats", "broadcast", "ban", "unban"]))
+@app.on_message(filters.private & filters.text & ~filters.command(["start", "help", "done", "stats", "broadcast", "ban", "unban", "addmod", "removemod", "mods", "commands"]))
 async def on_text(client, m):
     uid = m.from_user.id
     st = STATE.get(uid)
@@ -240,10 +240,20 @@ async def gate_cb(_, q):
         raise StopPropagation
 
 
-admin = filters.private & filters.user(ADMIN_ID)
+async def _is_staff(_, __, m):
+    if not m.from_user:
+        return False
+    if m.from_user.id == ADMIN_ID:
+        return True
+    doc = await users.find_one({"_id": m.from_user.id}, {"mod": 1})
+    return bool(doc and doc.get("mod"))
 
 
-@app.on_message(filters.command("stats") & admin)
+staff = filters.private & filters.create(_is_staff)  # admin + moderators
+owner = filters.private & filters.user(ADMIN_ID)  # admin only
+
+
+@app.on_message(filters.command("stats") & staff)
 async def stats(_, m):
     total = await users.count_documents({})
     banned = await users.count_documents({"banned": True})
@@ -253,15 +263,21 @@ async def stats(_, m):
     await m.reply(f"📊 Total users: {total}\n🟢 Last 24 hours: {day}\n🚫 Banned: {banned}\n🎬 Total edits: {edits}")
 
 
-@app.on_message(filters.command("ban") & admin)
+@app.on_message(filters.command("ban") & staff)
 async def ban(_, m):
     if len(m.command) < 2 or not m.command[1].isdigit():
         return await m.reply("Usage: /ban USER_ID")
-    await users.update_one({"_id": int(m.command[1])}, {"$set": {"banned": True}}, upsert=True)
+    target = int(m.command[1])
+    if target == ADMIN_ID:
+        return await m.reply("You cannot ban the admin.")
+    doc = await users.find_one({"_id": target}, {"mod": 1})
+    if doc and doc.get("mod") and m.from_user.id != ADMIN_ID:
+        return await m.reply("Only the admin can ban a moderator.")
+    await users.update_one({"_id": target}, {"$set": {"banned": True}}, upsert=True)
     await m.reply("🚫 User banned.")
 
 
-@app.on_message(filters.command("unban") & admin)
+@app.on_message(filters.command("unban") & staff)
 async def unban(_, m):
     if len(m.command) < 2 or not m.command[1].isdigit():
         return await m.reply("Usage: /unban USER_ID")
@@ -269,7 +285,7 @@ async def unban(_, m):
     await m.reply("✅ User unbanned.")
 
 
-@app.on_message(filters.command("broadcast") & admin)
+@app.on_message(filters.command("broadcast") & staff)
 async def broadcast(client, m):
     src = m.reply_to_message
     text = m.text.split(None, 1)[1] if len(m.command) > 1 else None
@@ -290,6 +306,53 @@ async def broadcast(client, m):
             fail += 1
         await asyncio.sleep(0.05)
     await status.edit_text(f"✅ Sent: {ok}\n❌ Failed: {fail}")
+
+
+# ---------- Moderator management (admin only) ----------
+@app.on_message(filters.command("addmod") & owner)
+async def addmod(client, m):
+    if len(m.command) < 2 or not m.command[1].isdigit():
+        return await m.reply("Usage: /addmod USER_ID")
+    uid = int(m.command[1])
+    await users.update_one({"_id": uid}, {"$set": {"mod": True, "banned": False}}, upsert=True)
+    await m.reply(f"✅ {uid} is now a moderator.")
+    try:
+        await client.send_message(uid, "🛡 You are now a moderator. Send /commands to see what you can do.")
+    except Exception:
+        await m.reply("Note: I could not message this user. They need to start the bot first.")
+
+
+@app.on_message(filters.command("removemod") & owner)
+async def removemod(client, m):
+    if len(m.command) < 2 or not m.command[1].isdigit():
+        return await m.reply("Usage: /removemod USER_ID")
+    await users.update_one({"_id": int(m.command[1])}, {"$set": {"mod": False}})
+    await m.reply("✅ Moderator removed.")
+
+
+@app.on_message(filters.command("mods") & owner)
+async def list_mods(_, m):
+    lines = []
+    async for u in users.find({"mod": True}):
+        name = u.get("name") or "-"
+        uname = f"@{u['username']}" if u.get("username") else ""
+        lines.append(f"{u['_id']}  {name} {uname}")
+    await m.reply("🛡 Moderators:\n" + ("\n".join(lines) if lines else "None yet."))
+
+
+@app.on_message(filters.command("commands") & staff)
+async def commands(_, m):
+    text = ("🛡 Moderator commands:\n"
+            "/stats - user and edit counts\n"
+            "/broadcast message - message all users (or reply to a message)\n"
+            "/ban ID - ban a user\n"
+            "/unban ID - unban a user\n")
+    if m.from_user.id == ADMIN_ID:
+        text += ("\n👑 Admin only:\n"
+                 "/addmod ID - make someone a moderator\n"
+                 "/removemod ID - remove a moderator\n"
+                 "/mods - list moderators\n")
+    await m.reply(text)
 
 
 if __name__ == "__main__":
