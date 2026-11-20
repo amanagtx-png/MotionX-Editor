@@ -5,15 +5,18 @@ import shutil
 import time
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from pyrogram import Client, filters, StopPropagation
+from pyrogram import Client, filters, idle, StopPropagation
 from pyrogram.errors import FloodWait
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+
+from web import start_web
 
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 MONGO_URI = os.environ["MONGO_URI"]
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "6658706300"))
+WEB_URL = os.environ.get("WEB_URL", "").rstrip("/")  # public https link of this app
 
 db = AsyncIOMotorClient(MONGO_URI)["videoeditor"]
 users = db["users"]
@@ -142,9 +145,24 @@ async def run_edit(client, chat_id, uid, action, param=None, audio_path=None):
         st["action"] = None
 
 
+def web_button():
+    if not WEB_URL:
+        return None
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🎬 Open MEGA EDITOR", web_app=WebAppInfo(url=WEB_URL))]])
+
+
 @app.on_message(filters.command(["start", "help"]) & filters.private)
 async def start(_, m):
-    await m.reply("Hello! 🎬 Send me a video, then pick an edit using the buttons.\nUse /done to clean up.")
+    await m.reply("Hello! 🎬 Send me a video, then pick an edit using the buttons.\n"
+                  "Or open MEGA EDITOR for full control.\nUse /done to clean up.",
+                  reply_markup=web_button())
+
+
+@app.on_message(filters.command("editor") & filters.private)
+async def editor(_, m):
+    if not WEB_URL:
+        return await m.reply("The web editor is not set up yet. The admin needs to add WEB_URL.")
+    await m.reply("Tap the button to open the web editor.", reply_markup=web_button())
 
 
 @app.on_message(filters.command("done") & filters.private)
@@ -186,7 +204,7 @@ async def on_button(client, q):
         await q.message.reply(PROMPTS[action])
 
 
-@app.on_message(filters.private & filters.text & ~filters.command(["start", "help", "done", "stats", "broadcast", "ban", "unban", "addmod", "removemod", "mods", "commands"]))
+@app.on_message(filters.private & filters.text & ~filters.command(["start", "help", "done", "stats", "broadcast", "ban", "unban", "addmod", "removemod", "mods", "commands", "editor"]))
 async def on_text(client, m):
     uid = m.from_user.id
     st = STATE.get(uid)
@@ -355,5 +373,12 @@ async def commands(_, m):
     await m.reply(text)
 
 
+async def main():
+    await app.start()
+    await start_web(app, BOT_TOKEN, users, ffmpeg, FONT)
+    await idle()
+    await app.stop()
+
+
 if __name__ == "__main__":
-    app.run()
+    app.run(main())
